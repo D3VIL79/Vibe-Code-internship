@@ -208,8 +208,9 @@ const AuthPage = ({ mode = 'login' }) => {
                   Click any role below to instantly authenticate into a live session configured with that tier's capabilities:
                 </p>
               </div>
-              <span className="hidden sm:inline-block text-[11px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">
-                Database Synced
+              <span className="hidden sm:inline-block text-[11px] font-bold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Direct Code-Based Auth
               </span>
             </div>
 

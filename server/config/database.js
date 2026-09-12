@@ -13,7 +13,9 @@ const { Pool } = pkg;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.resolve(__dirname, '../data');
+// In Vercel serverless environments, write permissions are restricted to /tmp
+const isVercel = Boolean(process.env.VERCEL);
+const DATA_DIR = isVercel ? '/tmp/data' : path.resolve(__dirname, '../data');
 const DB_FILE = path.resolve(DATA_DIR, 'sales_database.json');
 
 // Constant user IDs for consistent demo login
@@ -340,24 +342,30 @@ export const persistStore = () => {
   }, 100);
 };
 
+// Standalone, self-contained database engine with zero external database dependencies.
+// All users, subscriptions, training transcripts, and reports are managed purely in-code and local storage.
 let pool = null;
-let useDatabaseUrl = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.trim() !== '');
+let useDatabaseUrl = false;
 
-if (useDatabaseUrl) {
+// If a valid remote PostgreSQL database URL is explicitly passed and desired, optional pool can be enabled.
+// By default, no external database server is required.
+if (process.env.ENABLE_POSTGRES_DB === 'true' && process.env.DATABASE_URL) {
   try {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      connectionTimeoutMillis: 2000,
+      ssl: process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1')
+        ? { rejectUnauthorized: false }
+        : false
     });
-
-    pool.on('error', (err) => {
-      console.warn('[PostgreSQL] Idle client error (using persistent store):', err.message);
-    });
+    useDatabaseUrl = true;
   } catch (err) {
-    console.warn('[PostgreSQL] Could not init pool, using persistent file database:', err.message);
+    console.log('[Database] Running in pure code-based mode.');
     pool = null;
     useDatabaseUrl = false;
   }
+} else {
+  console.log('[Database] Pure code-based in-memory & file storage mode active. No external DB needed.');
 }
 
 /**
@@ -618,7 +626,23 @@ export const query = async (text, params = []) => {
     try {
       return await pool.query(text, params);
     } catch (err) {
-      console.warn('[PostgreSQL] query failed, executing with persistent fallback:', err.message);
+      const isConnectionError =
+        err.code === 'ECONNREFUSED' ||
+        err.code === 'ENOTFOUND' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'EHOSTUNREACH' ||
+        err.message?.includes('ECONNREFUSED');
+
+      if (isConnectionError) {
+        useDatabaseUrl = false;
+        if (pool) {
+          pool.end().catch(() => {});
+          pool = null;
+        }
+        console.log(`[Database] PostgreSQL host unreachable (${err.message}). Switched to persistent fallback database.`);
+      } else {
+        console.warn('[Database] Query failed on PostgreSQL, executing fallback:', err.message);
+      }
       return executeInMemoryQuery(text, params);
     }
   }

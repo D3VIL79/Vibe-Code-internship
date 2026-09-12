@@ -3,11 +3,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root manifests
+# Copy root and client package manifests
 COPY package*.json ./
+COPY client/package*.json ./client/
 
-# Install all dependencies including build tooling
+# Install root dependencies
 RUN npm install
+
+# Install client dependencies if needed and build client
+RUN if [ -f client/package.json ]; then npm --prefix client install; fi
 
 # Copy application source files
 COPY client/ ./client/
