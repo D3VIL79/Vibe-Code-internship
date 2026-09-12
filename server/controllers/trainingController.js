@@ -13,8 +13,8 @@ export const uploadTranscript = async (req, res) => {
     const cleanedContent = processText(content);
 
     const result = await query(
-      \`INSERT INTO training_data (user_id, source_type, title, content, processed) 
-       VALUES ($1, 'text', $2, $3, true) RETURNING *\`,
+      `INSERT INTO training_data (user_id, source_type, title, content, processed) 
+       VALUES ($1, 'text', $2, $3, true) RETURNING *`,
       [userId, title, cleanedContent]
     );
 
@@ -37,8 +37,8 @@ export const uploadVideoUrl = async (req, res) => {
     const content = await extractFromYouTube(url);
 
     const result = await query(
-      \`INSERT INTO training_data (user_id, source_type, title, content, processed) 
-       VALUES ($1, 'youtube', $2, $3, true) RETURNING *\`,
+      `INSERT INTO training_data (user_id, source_type, title, content, processed) 
+       VALUES ($1, 'youtube', $2, $3, true) RETURNING *`,
       [userId, title, content]
     );
 

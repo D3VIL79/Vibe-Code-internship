@@ -1,0 +1,8 @@
+{
+  "name": "Sales Intelligence SaaS",
+  "description": "AI-powered sales objection handling and 6KLH playbook intelligence SaaS",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

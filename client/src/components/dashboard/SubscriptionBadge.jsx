@@ -6,12 +6,13 @@ const SubscriptionBadge = () => {
 
   if (loading || !subscription) return null;
 
-  const plan = subscription.plan.toLowerCase();
+  const plan = (subscription?.plan || 'free').toLowerCase();
   
   const styles = {
     free: "bg-slate-100 text-slate-600 border-slate-200",
     trial: "bg-blue-50 text-blue-700 border-blue-200",
     pro: "bg-brand-50 text-brand-700 border-brand-200",
+    monthly: "bg-brand-50 text-brand-700 border-brand-200",
     lifetime: "bg-amber-50 text-amber-700 border-amber-200"
   };
 

@@ -22,20 +22,22 @@ export const generateReport = async (req, res) => {
 
     // Save the report
     const insertResult = await query(
-      \`INSERT INTO reports (user_id, product, industry, report_data, tokens_used) 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *\`,
+      `INSERT INTO reports (user_id, product, industry, report_data, tokens_used) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [userId, product, industry, reportData, tokensUsed]
     );
 
     // Deduct tokens
-    await deductTokens(subscription.id, tokensUsed);
-    
-    // Log usage
-    await query(
-      \`INSERT INTO token_usage (user_id, subscription_id, tokens_consumed, action)
-       VALUES ($1, $2, $3, 'generate_report')\`,
-      [userId, subscription.id, tokensUsed]
-    );
+    if (subscription?.id) {
+      await deductTokens(subscription.id, tokensUsed);
+      
+      // Log usage
+      await query(
+        `INSERT INTO token_usage (user_id, subscription_id, tokens_consumed, action)
+         VALUES ($1, $2, $3, 'generate_report')`,
+        [userId, subscription.id, tokensUsed]
+      );
+    }
 
     res.status(201).json({ report: insertResult.rows[0], tokensUsed });
   } catch (error) {

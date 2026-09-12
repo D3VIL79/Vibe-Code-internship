@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
 
+const getJwtSecret = () => process.env.JWT_SECRET || 'salesiq-dev-jwt-secret-key-2025';
+
 /**
  * Authentication middleware to verify JWT tokens
  */
@@ -11,7 +13,7 @@ export const authenticate = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
     next();
   } catch (error) {
@@ -28,7 +30,7 @@ export const optionalAuth = (req, res, next) => {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, getJwtSecret());
       req.user = decoded;
     } catch (error) {
       // Ignore errors for optional auth

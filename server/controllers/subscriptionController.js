@@ -10,11 +10,11 @@ export const getStatus = async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await query(
-      \`SELECT s.*, p.name as plan_name, p.features, p.report_limit 
+      `SELECT s.*, p.name as plan_name, p.features, p.report_limit 
        FROM subscriptions s 
        JOIN plans p ON s.plan_id = p.id 
        WHERE s.user_id = $1 AND s.status = 'active'
-       ORDER BY s.created_at DESC LIMIT 1\`,
+       ORDER BY s.created_at DESC LIMIT 1`,
       [userId]
     );
 
@@ -63,12 +63,12 @@ export const verify = async (req, res) => {
     if (!plan) return res.status(400).json({ error: 'Invalid plan' });
 
     // Mark old subscriptions as inactive
-    await query(\`UPDATE subscriptions SET status = 'cancelled' WHERE user_id = $1\`, [userId]);
+    await query(`UPDATE subscriptions SET status = 'cancelled' WHERE user_id = $1`, [userId]);
 
     // Insert new subscription
     const result = await query(
-      \`INSERT INTO subscriptions (user_id, plan_id, status, razorpay_subscription_id, tokens_limit) 
-       VALUES ($1, $2, 'active', $3, $4) RETURNING *\`,
+      `INSERT INTO subscriptions (user_id, plan_id, status, razorpay_subscription_id, tokens_limit) 
+       VALUES ($1, $2, 'active', $3, $4) RETURNING *`,
       [userId, planId, razorpay_payment_id, plan.token_limit]
     );
 
@@ -82,12 +82,12 @@ export const verify = async (req, res) => {
 export const cancelSubscription = async (req, res) => {
   try {
     const userId = req.user.id;
-    await query(\`UPDATE subscriptions SET status = 'cancelled' WHERE user_id = $1 AND status = 'active'\`, [userId]);
+    await query(`UPDATE subscriptions SET status = 'cancelled' WHERE user_id = $1 AND status = 'active'`, [userId]);
     
     // Revert to free plan
     const freePlan = PLANS.free;
     await query(
-      \`INSERT INTO subscriptions (user_id, plan_id, tokens_limit) VALUES ($1, $2, $3)\`,
+      `INSERT INTO subscriptions (user_id, plan_id, tokens_limit) VALUES ($1, $2, $3)`,
       [userId, freePlan.id, freePlan.token_limit]
     );
 
@@ -95,5 +95,32 @@ export const cancelSubscription = async (req, res) => {
   } catch (error) {
     console.error('Cancel Subscription Error:', error);
     res.status(500).json({ error: 'Failed to cancel subscription' });
+  }
+};
+
+export const upgradePlan = async (req, res) => {
+  try {
+    const { planId } = req.body;
+    const userId = req.user.id;
+    const plan = PLANS[planId];
+    if (!plan) return res.status(400).json({ error: 'Invalid plan selected' });
+
+    // Cancel prior subscriptions
+    await query(`UPDATE subscriptions SET status = 'cancelled' WHERE user_id = $1`, [userId]);
+
+    // Insert new active subscription
+    const result = await query(
+      `INSERT INTO subscriptions (user_id, plan_id, status, tokens_limit, reports_generated) 
+       VALUES ($1, $2, 'active', $3, 0) RETURNING *`,
+      [userId, planId, plan.token_limit]
+    );
+
+    res.json({
+      message: `Successfully updated subscription to ${plan.name}`,
+      subscription: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Upgrade Plan Error:', error);
+    res.status(500).json({ error: 'Failed to upgrade plan' });
   }
 };
