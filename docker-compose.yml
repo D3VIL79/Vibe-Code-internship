@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: salesiq-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: salesiq
+      POSTGRES_PASSWORD: salesiq_dev_password
+      POSTGRES_DB: salesiq
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U salesiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend API
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: salesiq-server
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://salesiq:salesiq_dev_password@db:5432/salesiq
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # React Frontend (dev mode)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: salesiq-client
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
